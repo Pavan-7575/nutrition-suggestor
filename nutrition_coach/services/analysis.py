@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from .image_processing import ProcessedImage
@@ -12,6 +13,11 @@ DISCLAIMER = (
     "dietary guidance, consult a qualified clinician or dietitian."
 )
 
+GREETING_PATTERN = re.compile(
+    r"^(hi|hello|hey|hlo|helo|hy|hola|greetings|good\s*(morning|afternoon|evening)|howdy|sup|yo|who\s*are\s*you|what\s*can\s*you\s*do|help)[\s!.,?]*$",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class NutritionAnalysisService:
@@ -19,6 +25,21 @@ class NutritionAnalysisService:
     generator: OllamaVisionGenerator
 
     def analyze(self, question: str, image: ProcessedImage | None) -> dict:
+        # Deterministic Guardrail: Catch pure greetings without querying heavy RAG or models
+        if image is None and GREETING_PATTERN.match(question.strip()):
+            return {
+                "question": question,
+                "assessment": (
+                    "Hello! I am NutriVision AI, your evidence-aware nutrition assistant.\n\n"
+                    "You can upload or take a photo of a meal or Nutrition Facts label, or ask me "
+                    "any question about dietary balance, macronutrients, and healthy eating guidelines."
+                ),
+                "mode": "conversational",
+                "image_received": False,
+                "evidence": [],
+                "limitations": [],
+            }
+
         evidence = self.knowledge_base.search(question)
         generation = self.generator.generate(
             self._prompt(question, evidence, image is not None), image
@@ -52,18 +73,22 @@ class NutritionAnalysisService:
             f"[{item.id}] {item.title}\n{item.text}" for item in evidence
         )
         image_rule = (
-            "An image is attached. Identify only what is reasonably visible, and label every food or portion "
-            "conclusion as an estimate. Do not infer exact serving size."
+            "An image is attached. Identify what is reasonably visible, describe the food items, and label portions as estimates."
             if has_image
-            else "No image is attached; do not claim to have seen a meal or label."
+            else "No image is attached."
         )
-        return f"""You are a cautious nutrition information assistant. Answer the user's question with plain text headings and bullets. Use only the evidence below for factual nutrition guidance; cite each factual statement as [source-id]. If the evidence does not support an answer, say so. Do not diagnose, prescribe treatment, or invent calories, ingredients, portion sizes, citations, or results.
+        return f"""You are NutriVision AI, a knowledgeable, friendly, and evidence-aware nutrition assistant.
+
+Guidelines:
+- If the user provides a casual greeting, conversational opening (e.g., "hi", "hello", "who are you?"), or asks a general question, respond warmly, politely, and introduce how you can help them analyze meals or nutrition labels. Do NOT dump nutrition facts unless asked.
+- When answering specific dietary, food, or nutrition questions, synthesize clear guidance. Cite evidence using [source-id] where applicable.
+- Do not invent exact medical advice or calorie counts.
 {image_rule}
 
-Question: {question}
+User Query: {question}
 
-Retrieved evidence:
-{context or "No relevant evidence was retrieved."}
+Reference Evidence (use when relevant to the question):
+{context or "No relevant evidence retrieved."}
 """
 
     @staticmethod

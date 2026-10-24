@@ -55,10 +55,8 @@ body {
 }
 
 .nav-container {
-  max-width: 1200px;
   width: 100%;
-  margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -72,16 +70,12 @@ body {
   user-select: none;
 }
 
-.brand-icon {
+.brand-logo-img {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, var(--primary-orange), #ff8f5a);
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 2px 10px var(--primary-glow);
+  object-fit: cover;
+  box-shadow: 0 2px 8px var(--primary-glow);
 }
 
 .brand-text {
@@ -178,15 +172,37 @@ body {
 .hero-badge {
   display: inline-flex;
   align-items: center;
-  background: rgba(255, 94, 30, 0.1);
-  border: 1px solid rgba(255, 94, 30, 0.3);
+  background: transparent;
+  border: none;
   color: var(--primary-orange);
-  padding: 0.4rem 1.1rem;
-  border-radius: 50px;
-  font-size: 0.82rem;
+  padding: 0;
+  font-size: 0.92rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  margin-bottom: 1.75rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 1.5rem;
+  min-height: 1.5rem;
+}
+
+.typewriter-char {
+  opacity: 0;
+  display: inline-block;
+  animation: charFadeIn 0.25s ease forwards;
+}
+
+.typewriter-space {
+  display: inline-block;
+  width: 0.35rem;
+}
+
+@keyframes charFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hero-headline {
@@ -681,8 +697,8 @@ body {
 }
 
 .input-composer:focus-within {
-  border-color: var(--primary-orange);
-  box-shadow: 0 4px 24px var(--primary-glow);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .attachment-preview {
@@ -756,6 +772,13 @@ textarea#user-input {
   max-height: 180px;
   padding: 0.45rem 0.25rem;
   line-height: 1.45;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+textarea#user-input::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 textarea#user-input::placeholder {
@@ -777,9 +800,12 @@ textarea#user-input::placeholder {
   transition: transform 0.15s, background-color 0.2s;
 }
 
-.send-btn:hover:not(:disabled) {
-  background-color: var(--primary-orange-hover);
-  transform: scale(1.05);
+.send-btn.stop-state {
+  background-color: #ef4444;
+}
+
+.send-btn.stop-state:hover {
+  background-color: #dc2626;
 }
 
 .send-btn:disabled {
@@ -794,10 +820,113 @@ textarea#user-input::placeholder {
   margin-top: 0.5rem;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Camera Viewfinder Modal */
+.camera-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
 }
+
+.camera-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.camera-card-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.close-modal-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.15s;
+}
+
+.close-modal-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.camera-video-wrapper {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-card-actions {
+  padding: 1.25rem;
+  display: flex;
+  justify-content: center;
+  background: var(--bg-composer);
+}
+
+.snap-photo-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.snap-photo-btn:hover {
+  transform: scale(1.06);
+}
+
+.snap-inner-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--primary-orange);
+}
+
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;

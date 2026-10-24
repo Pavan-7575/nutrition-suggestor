@@ -33,6 +33,10 @@ const welcomeHero = document.querySelector('#welcome-hero');
 
 const userInput = document.querySelector('#user-input');
 const sendBtn = document.querySelector('#send-btn');
+const sendIcon = document.querySelector('#send-icon');
+const stopIcon = document.querySelector('#stop-icon');
+let currentAbortController = null;
+let isGenerating = false;
 const fileInput = document.querySelector('#file-input');
 const cameraInput = document.querySelector('#camera-input');
 const uploadFileBtn = document.querySelector('#upload-file-btn');
@@ -40,6 +44,13 @@ const cameraBtn = document.querySelector('#camera-btn');
 const attachmentPreview = document.querySelector('#attachment-preview');
 const previewImg = document.querySelector('#preview-img');
 const clearAttachBtn = document.querySelector('#clear-attach-btn');
+
+// Abort any ongoing request if user unloads / reloads the page
+window.addEventListener('beforeunload', () => {
+  if (currentAbortController) {
+    currentAbortController.abort();
+  }
+});
 
 // View Switching Functions
 function showLandingView() {
@@ -72,14 +83,30 @@ toggleSidebarBtn.addEventListener('click', () => {
   sidebar.classList.toggle('collapsed');
 });
 
-// Auto-expand textarea
-userInput.addEventListener('input', () => {
-  userInput.style.height = 'auto';
-  userInput.style.height = `${Math.min(userInput.scrollHeight, 180)}px`;
-  updateSendButtonState();
+// Auto-expand textarea & update button on all input events
+['input', 'change', 'keyup', 'paste'].forEach((eventType) => {
+  userInput.addEventListener(eventType, () => {
+    userInput.style.height = 'auto';
+    userInput.style.height = `${Math.min(userInput.scrollHeight, 180)}px`;
+    updateSendButtonState();
+  });
 });
 
 function updateSendButtonState() {
+  if (isGenerating) {
+    sendBtn.disabled = false;
+    sendBtn.title = 'Stop generating';
+    sendIcon.style.display = 'none';
+    stopIcon.style.display = 'block';
+    sendBtn.classList.add('stop-state');
+    return;
+  }
+
+  sendBtn.title = 'Send message';
+  sendIcon.style.display = 'block';
+  stopIcon.style.display = 'none';
+  sendBtn.classList.remove('stop-state');
+
   const hasText = Boolean(userInput.value.trim());
   const hasImage = Boolean(currentImageFile);
   sendBtn.disabled = !(hasText || hasImage);
@@ -90,10 +117,83 @@ uploadFileBtn.addEventListener('click', () => {
   fileInput.click();
 });
 
-// Camera button trigger
-cameraBtn.addEventListener('click', () => {
-  cameraInput.click();
-});
+// Camera Modal Elements & Event Listeners
+function initCamera() {
+  const cameraBtnEl = document.getElementById('camera-btn');
+  const modal = document.getElementById('camera-modal');
+  const video = document.getElementById('camera-video');
+  const closeBtn = document.getElementById('close-camera-btn');
+  const snapBtn = document.getElementById('snap-photo-btn');
+  const canvas = document.getElementById('camera-canvas');
+
+  if (!cameraBtnEl) return;
+
+  function stopStream() {
+    if (activeMediaStream) {
+      activeMediaStream.getTracks().forEach((track) => track.stop());
+      activeMediaStream = null;
+    }
+    if (modal) modal.style.display = 'none';
+  }
+
+  cameraBtnEl.onclick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Re-query elements directly on click to guarantee they are non-null
+    const currentModal = document.getElementById('camera-modal');
+    const currentVideo = document.getElementById('camera-video');
+
+    if (!currentVideo || !currentModal) {
+      alert('Camera UI element not found. Please refresh the page.');
+      return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Your browser does not support live camera access.');
+      return;
+    }
+
+    try {
+      activeMediaStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+      currentVideo.srcObject = activeMediaStream;
+      currentModal.style.display = 'flex';
+      currentVideo.play().catch(() => {});
+    } catch (err) {
+      console.error('Camera stream error:', err);
+      alert(`Could not start camera: ${err.name} - ${err.message}`);
+    }
+  };
+
+  if (closeBtn) closeBtn.onclick = stopStream;
+
+  if (snapBtn) {
+    snapBtn.onclick = () => {
+      if (!activeMediaStream || !video) return;
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          currentImageFile = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+          currentImageBase64 = canvas.toDataURL('image/jpeg');
+          previewImg.src = currentImageBase64;
+          attachmentPreview.style.display = 'flex';
+          updateSendButtonState();
+          stopStream();
+        }
+      }, 'image/jpeg', 0.92);
+    };
+  }
+}
+
+initCamera();
 
 // Handle file selection (upload & camera)
 [fileInput, cameraInput].forEach((input) => {
@@ -160,7 +260,20 @@ userInput.addEventListener('keydown', (e) => {
   }
 });
 
-sendBtn.addEventListener('click', sendMessage);
+sendBtn.addEventListener('click', () => {
+  if (isGenerating) {
+    stopGenerating();
+  } else {
+    sendMessage();
+  }
+});
+
+function stopGenerating() {
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+  }
+}
 
 async function sendMessage() {
   const query = userInput.value.trim();
@@ -205,10 +318,15 @@ async function sendMessage() {
   currentSession.messages.push(loadingMsg);
   renderActiveChat();
 
+  isGenerating = true;
+  updateSendButtonState();
+  currentAbortController = new AbortController();
+
   try {
     const res = await fetch('/api/analyze', {
       method: 'POST',
-      body: formData
+      body: formData,
+      signal: currentAbortController.signal
     });
     const data = await res.json();
 
@@ -227,12 +345,25 @@ async function sendMessage() {
     });
   } catch (err) {
     currentSession.messages.pop();
-    currentSession.messages.push({
-      sender: 'bot',
-      text: `⚠️ Analysis failed: ${err.message}. Please check if Ollama is running with minicpm-v.`,
-      evidence: [],
-      limitations: []
-    });
+    if (err.name === 'AbortError') {
+      currentSession.messages.push({
+        sender: 'bot',
+        text: '⏹️ Generation stopped by user.',
+        evidence: [],
+        limitations: []
+      });
+    } else {
+      currentSession.messages.push({
+        sender: 'bot',
+        text: `⚠️ Analysis failed: ${err.message}. Please check if Ollama is running with minicpm-v.`,
+        evidence: [],
+        limitations: []
+      });
+    }
+  } finally {
+    isGenerating = false;
+    currentAbortController = null;
+    updateSendButtonState();
   }
 
   renderActiveChat();
@@ -336,6 +467,30 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+// Animate Badge Letter-by-Letter
+function initTypewriterBadge() {
+  const badge = document.getElementById('typewriter-badge');
+  if (!badge) return;
+
+  const phrase = 'Next-Gen Multimodal Vision Assistant';
+  badge.innerHTML = '';
+
+  Array.from(phrase).forEach((char, index) => {
+    const span = document.createElement('span');
+    if (char === ' ') {
+      span.className = 'typewriter-space';
+      span.innerHTML = '&nbsp;';
+    } else {
+      span.className = 'typewriter-char';
+      span.textContent = char;
+      span.style.animationDelay = `${index * 0.04}s`;
+    }
+    badge.appendChild(span);
+  });
+}
+
 // Initial render
+initTypewriterBadge();
 renderHistoryList();
 renderActiveChat();
+updateSendButtonState();
