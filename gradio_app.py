@@ -3,10 +3,10 @@ from __future__ import annotations
 import base64
 import os
 from io import BytesIO
-from PIL import Image
 
 import gradio as gr
 from dotenv import load_dotenv
+from PIL import Image
 
 from nutrition_coach.services.analysis import NutritionAnalysisService
 from nutrition_coach.services.image_processing import ProcessedImage

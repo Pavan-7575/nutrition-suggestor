@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import math
 import re
-import urllib.request
 import urllib.error
+import urllib.request
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -41,7 +41,7 @@ class BM25Retriever:
             self.doc_lens.append(len(tokens))
             tf = Counter(tokens)
             self.doc_term_freqs.append(tf)
-            for token in tf.keys():
+            for token in tf:
                 self.df[token] += 1
 
         self.avg_dl = sum(self.doc_lens) / max(self.n_docs, 1)
@@ -87,7 +87,7 @@ class BGEEmbeddingRetriever:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 res = json.loads(resp.read().decode("utf-8"))
                 return res.get("embedding")
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _precompute_doc_embeddings(self) -> None:

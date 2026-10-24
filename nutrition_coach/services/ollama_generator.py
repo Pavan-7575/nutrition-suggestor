@@ -72,4 +72,4 @@ class OllamaVisionGenerator:
                 f"Could not connect to Ollama at {self.host}. Is Ollama running? Error: {exc}",
             )
         except Exception as exc:  # noqa: BLE001
-            return GenerationResult(None, f"Ollama generation failed: {repr(exc)}")
+            return GenerationResult(None, f"Ollama generation failed: {exc!r}")

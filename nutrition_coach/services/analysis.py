@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .image_processing import ProcessedImage
-from .rag import LocalKnowledgeBase, RetrievedDocument
 from .ollama_generator import OllamaVisionGenerator
+from .rag import LocalKnowledgeBase, RetrievedDocument
 
 DISCLAIMER = (
     "Nutrition information and any image-based observations are approximate. An image cannot "

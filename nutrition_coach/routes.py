@@ -5,8 +5,8 @@ from werkzeug.exceptions import RequestEntityTooLarge
 
 from .services.analysis import NutritionAnalysisService
 from .services.image_processing import ImageValidationError, validate_and_encode_image
-from .services.rag import LocalKnowledgeBase
 from .services.ollama_generator import OllamaVisionGenerator
+from .services.rag import LocalKnowledgeBase
 
 web = Blueprint("web", __name__)
 
