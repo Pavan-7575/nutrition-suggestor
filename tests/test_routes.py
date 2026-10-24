@@ -21,7 +21,7 @@ class RouteTests(unittest.TestCase):
     def test_home_page_loads(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Nutrition Coach", response.data)
+        self.assertIn(b"NutriVision AI", response.data)
 
     def test_analysis_returns_retrieved_evidence_without_provider(self):
         response = self.client.post(

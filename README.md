@@ -1,6 +1,8 @@
 # NutriVision AI — Evidence-Aware Nutrition Coach
 
-A clinical, multimodal nutrition assistant combining **Hybrid RAG (BGE-M3 + Okapi BM25)** with **on-device Vision Language Models (Ollama)**. It accepts a dietary question alongside an optional meal photo or Nutrition Facts label, retrieves authoritative clinical benchmarks, and synthesizes evidence-grounded dietary observations.
+A clinical, multimodal nutrition web application built on **Python Flask**, **Hybrid RAG (BGE-M3 + Okapi BM25)**, and local vision intelligence using **Ollama** (`minicpm-v` / `llava`).
+
+It accepts a dietary question alongside an optional meal photo or Nutrition Facts label, retrieves authoritative clinical benchmarks, and synthesizes evidence-grounded dietary observations.
 
 The assistant is deliberately conservative: food photos cannot establish exact portion weights, hidden oils, calories, allergens, or medical suitability. Every assessment cites its authoritative sources (USDA, FDA, WHO) and attaches a clinical limitation notice.
 
@@ -15,9 +17,8 @@ The assistant is deliberately conservative: food photos cannot establish exact p
   - **Dietary Guidelines for Americans**
   - **FDA Nutrition Facts Label Guidance**
   - **World Health Organization (WHO) Healthy Diet Guidelines**
-- **Dual Interfaces**:
-  - **Gradio Interactive App** (`gradio_app.py`): Restyled dark-mode interface with prompt pills, live badges, and evidence cards.
-  - **Flask REST API / Web UI** (`app.py`): Clean JSON endpoint (`POST /api/analyze`) and lightweight web dashboard.
+- **Modern Restyled Web UI**: Dark-mode interface with live preview, real-time status feedback, and evidence cards.
+- **RESTful API**: Standardized JSON endpoint (`POST /api/analyze`) for programmatic access.
 - **100% Local & Private**: Runs completely on your machine with Ollama. Zero external API keys, zero token fees, zero cloud image leakage.
 - **CI Automated Quality**: Continuous integration via GitHub Actions enforcing strict linting (`ruff`) and automated unit tests.
 
@@ -45,7 +46,7 @@ User Input (Image + Dietary Question)
 ## Prerequisites
 
 1. **Python 3.11+**
-2. **Ollama installed on Windows/macOS/Linux**: [Download Ollama](https://ollama.com/download)
+2. **Ollama installed**: [Download Ollama](https://ollama.com/download)
    - Pull the vision model:
      ```powershell
      ollama run minicpm-v
@@ -57,7 +58,7 @@ User Input (Image + Dietary Question)
 
 ---
 
-## Installation & Setup
+## Installation & Running
 
 1. **Clone the repository**:
    ```powershell
@@ -76,28 +77,11 @@ User Input (Image + Dietary Question)
    python -m pip install -r requirements-dev.txt
    ```
 
-4. **Configure environment variables**:
+4. **Launch the Flask application**:
    ```powershell
-   Copy-Item .env.example .env
+   python app.py
    ```
-   *(Defaults are pre-configured for local Ollama usage: `OLLAMA_HOST=http://localhost:11434` and `OLLAMA_MODEL=minicpm-v`).*
 
----
-
-## Running the Application
-
-### Option 1: Gradio Web UI (Recommended)
-Launch the styled interactive app:
-```powershell
-python gradio_app.py
-```
-Open your browser at **`http://localhost:7860`**.
-
-### Option 2: Flask Web Application & REST API
-Launch the standard Flask server:
-```powershell
-python app.py
-```
 Open your browser at **`http://localhost:5000`**.
 
 ---
@@ -141,7 +125,7 @@ curl -F "question=How balanced is this meal?" -F "image=@meal.jpg" http://localh
 
 ---
 
-## Testing & Code Quality
+## Testing & Quality Checks
 
 Run linting checks and test suites locally:
 
@@ -158,11 +142,10 @@ python -m unittest discover -s tests -v
 ## Project Structure
 
 ```text
-├── gradio_app.py                   # Gradio interface with custom styling
 ├── app.py                          # Flask application entry point
 ├── nutrition_coach/
 │   ├── config.py                   # Environment settings & application configuration
-│   ├── routes.py                   # API routes and CORS headers
+│   ├── routes.py                   # Web and JSON API routes
 │   ├── data/
 │   │   └── knowledge_base.json     # Curated USDA, FDA, and WHO reference documents
 │   └── services/
@@ -170,7 +153,8 @@ python -m unittest discover -s tests -v
 │       ├── image_processing.py      # Image validation and base64 encoding
 │       ├── ollama_generator.py      # Ollama API client (minicpm-v / llava)
 │       └── rag.py                  # Hybrid RAG engine (Okapi BM25 + BGE-M3 + RRF)
-├── templates/ & static/            # Vanilla HTML5/CSS3/JS web UI
+├── templates/                      # Flask HTML5 template
+├── static/                         # Polished CSS styles and client-side JavaScript
 ├── tests/                          # Automated unit tests
 ├── requirements.txt                # Runtime dependencies
 └── requirements-dev.txt            # Development & CI dependencies (ruff)
