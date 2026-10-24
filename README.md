@@ -1,99 +1,183 @@
-# Nutrition Coach
+# NutriVision AI — Evidence-Aware Nutrition Coach
 
-A small Flask-based multimodal nutrition assistant. It accepts a nutrition question and an optional food or Nutrition Facts-label image, retrieves relevant local evidence, and can send the grounded prompt plus image to IBM watsonx.ai's Llama 4 Maverick vision model.
+A clinical, multimodal nutrition assistant combining **Hybrid RAG (BGE-M3 + Okapi BM25)** with **on-device Vision Language Models (Ollama)**. It accepts a dietary question alongside an optional meal photo or Nutrition Facts label, retrieves authoritative clinical benchmarks, and synthesizes evidence-grounded dietary observations.
 
-It is deliberately conservative: food photos do not establish exact portions, ingredients, calories, allergies, or medical suitability. Every response includes source links and a limitation notice.
+The assistant is deliberately conservative: food photos cannot establish exact portion weights, hidden oils, calories, allergens, or medical suitability. Every assessment cites its authoritative sources (USDA, FDA, WHO) and attaches a clinical limitation notice.
 
-## Features
+---
 
-- Responsive browser interface with question input, image selection, preview, loading and error states.
-- Validated JPEG, PNG and WebP uploads (8 MB by default); files are processed in memory and never persisted.
-- Local, deterministic retrieval over a cited knowledge base in `nutrition_coach/data/knowledge_base.json`.
-- Evidence-grounded watsonx vision prompt when `WATSONX_*` settings are present.
-- Useful evidence-only fallback when no credential, package, or provider response is available—never a fake vision result.
-- Structured JSON API response with assessment, evidence, response mode, and limitations.
+## Key Features
+
+- **Multimodal Visual Understanding**: Reads meal photos and Nutrition Facts labels using locally hosted vision LLMs (default: `minicpm-v` or `llava`) via Ollama.
+- **Hybrid RAG Retrieval**: Combines dense semantic vector search via **BGE-M3** with lexical keyword matching via **Okapi BM25**, fused through **Reciprocal Rank Fusion (RRF)**.
+- **Clinical Evidence Grounding**: Answers are grounded directly against verified excerpts from:
+  - **USDA FoodData Central**
+  - **Dietary Guidelines for Americans**
+  - **FDA Nutrition Facts Label Guidance**
+  - **World Health Organization (WHO) Healthy Diet Guidelines**
+- **Dual Interfaces**:
+  - **Gradio Interactive App** (`gradio_app.py`): Restyled dark-mode interface with prompt pills, live badges, and evidence cards.
+  - **Flask REST API / Web UI** (`app.py`): Clean JSON endpoint (`POST /api/analyze`) and lightweight web dashboard.
+- **100% Local & Private**: Runs completely on your machine with Ollama. Zero external API keys, zero token fees, zero cloud image leakage.
+- **CI Automated Quality**: Continuous integration via GitHub Actions enforcing strict linting (`ruff`) and automated unit tests.
+
+---
 
 ## Architecture
 
 ```text
-Browser -> Flask /api/analyze -> input validation -> local retrieval
-                                             |             |
-                                             |             +-> citations/excerpts
-                                             +-> watsonx Llama 4 Vision (optional)
-                                                           |
-                                                     structured browser response
+User Input (Image + Dietary Question)
+       │
+       ├──► Hybrid RAG Search (nutrition_coach/services/rag.py)
+       │      ├─► BM25 Lexical Keyword Matching
+       │      ├─► BGE-M3 Semantic Vector Embeddings (via Ollama)
+       │      └─► Reciprocal Rank Fusion (RRF) ──► Top Cited Passages
+       │
+       └──► Local Vision Generator (nutrition_coach/services/ollama_generator.py)
+              └─► Ollama API (minicpm-v / llava) + Grounded System Prompt
+                     │
+                     ▼
+       Structured Assessment + Evidence Citations + Safety Disclaimer
 ```
 
-The retriever uses a transparent TF-IDF-style lexical scorer to avoid an additional database service for this small starter corpus. The service boundary in `nutrition_coach/services/rag.py` is the replacement point for embeddings and a vector store when a larger approved corpus becomes available.
+---
 
-## Requirements
+## Prerequisites
 
-- Python 3.11+
-- A watsonx.ai API key and project ID only for live model-assisted analysis
+1. **Python 3.11+**
+2. **Ollama installed on Windows/macOS/Linux**: [Download Ollama](https://ollama.com/download)
+   - Pull the vision model:
+     ```powershell
+     ollama run minicpm-v
+     ```
+   - Pull the embedding model for Hybrid RAG:
+     ```powershell
+     ollama pull bge-m3
+     ```
 
-## Install and run
+---
 
+## Installation & Setup
+
+1. **Clone the repository**:
+   ```powershell
+   git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+   cd "nutrition suggestor"
+   ```
+
+2. **Create and activate a virtual environment**:
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+
+3. **Install dependencies**:
+   ```powershell
+   python -m pip install -r requirements-dev.txt
+   ```
+
+4. **Configure environment variables**:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+   *(Defaults are pre-configured for local Ollama usage: `OLLAMA_HOST=http://localhost:11434` and `OLLAMA_MODEL=minicpm-v`).*
+
+---
+
+## Running the Application
+
+### Option 1: Gradio Web UI (Recommended)
+Launch the styled interactive app:
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt
-Copy-Item .env.example .env
+python gradio_app.py
+```
+Open your browser at **`http://localhost:7860`**.
+
+### Option 2: Flask Web Application & REST API
+Launch the standard Flask server:
+```powershell
 python app.py
 ```
+Open your browser at **`http://localhost:5000`**.
 
-Open `http://127.0.0.1:5000`. Configure the `WATSONX_*` variables in `.env` before launching for live Llama 4 Maverick calls. Without them, the app still demonstrates validation, retrieval, citations, and its explicit evidence-only fallback.
+---
 
-On macOS/Linux, activate the environment with `source .venv/bin/activate`.
+## REST API Specification
 
-## API
+### `POST /api/analyze`
+Accepts `multipart/form-data`:
 
-`POST /api/analyze` is `multipart/form-data`:
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `question` | String *(required)* | Dietary query (up to 2,000 characters). |
+| `image` | File *(optional)* | JPEG, PNG, or WebP image (up to 8 MB). |
 
-- `question` — required, up to 2,000 characters
-- `image` — optional JPEG, PNG, or WebP image
-
-Example:
-
+#### Example Request:
 ```bash
-curl -F "question=How do I compare serving sizes on this label?" -F "image=@label.png" http://127.0.0.1:5000/api/analyze
+curl -F "question=How balanced is this meal?" -F "image=@meal.jpg" http://localhost:5000/api/analyze
 ```
 
-The response has `assessment`, `mode`, `evidence`, `limitations`, and `image_received`. `mode: evidence-only` indicates the model was not used; it is not an image analysis result.
+#### Example Response:
+```json
+{
+  "question": "How balanced is this meal?",
+  "assessment": "The meal contains salmon and vegetables. While protein and fiber are present, exact portion sizes and calorie totals cannot be determined from an image alone...",
+  "mode": "model-assisted",
+  "image_received": true,
+  "evidence": [
+    {
+      "id": "dietary-guidelines",
+      "title": "Dietary Guidelines for Americans: dietary patterns",
+      "url": "https://www.dietaryguidelines.gov/",
+      "excerpt": "Healthy dietary patterns emphasize vegetables, fruits, whole grains...",
+      "score": 0.033
+    }
+  ],
+  "limitations": [
+    "Nutrition information and any image-based observations are approximate. An image cannot reliably establish portions, ingredients, or medical suitability. For medical or precise dietary guidance, consult a qualified clinician or dietitian."
+  ]
+}
+```
 
-## Knowledge and RAG workflow
+---
 
-The bundled corpus contains brief, attributed guidance from USDA FoodData Central, the Dietary Guidelines for Americans, FDA Nutrition Facts label guidance, and WHO. It is intentionally not a food-composition database. To add approved knowledge, append an object with `id`, `title`, `text`, and `source_url` to `nutrition_coach/data/knowledge_base.json`; citations are generated only from these entries.
+## Testing & Code Quality
 
-For production, review and version the corpus, add an embedding/vector backend behind `LocalKnowledgeBase`, and evaluate retrieval quality before relying on the app for user-facing advice.
-
-## Testing and quality checks
+Run linting checks and test suites locally:
 
 ```powershell
-ruff check .
+# Run Ruff linter (enforced by GitHub Actions CI)
+python -m ruff check .
+
+# Run unit tests
 python -m unittest discover -s tests -v
 ```
 
-The tests cover retrieval, image validation, API validation, the web route, and the credential-free retrieval fallback. They do not invoke watsonx.ai or validate real model output.
+---
 
-## Project layout
+## Project Structure
 
 ```text
-app.py                         Application entry point
-nutrition_coach/routes.py      Web and JSON API routes
-nutrition_coach/services/      Image validation, retrieval, generation, orchestration
-nutrition_coach/data/          Curated, cited knowledge source excerpts
-templates/ and static/         Browser experience
-tests/                         Unit and route tests
+├── gradio_app.py                   # Gradio interface with custom styling
+├── app.py                          # Flask application entry point
+├── nutrition_coach/
+│   ├── config.py                   # Environment settings & application configuration
+│   ├── routes.py                   # API routes and CORS headers
+│   ├── data/
+│   │   └── knowledge_base.json     # Curated USDA, FDA, and WHO reference documents
+│   └── services/
+│       ├── analysis.py             # Orchestration between RAG and vision generation
+│       ├── image_processing.py      # Image validation and base64 encoding
+│       ├── ollama_generator.py      # Ollama API client (minicpm-v / llava)
+│       └── rag.py                  # Hybrid RAG engine (Okapi BM25 + BGE-M3 + RRF)
+├── templates/ & static/            # Vanilla HTML5/CSS3/JS web UI
+├── tests/                          # Automated unit tests
+├── requirements.txt                # Runtime dependencies
+└── requirements-dev.txt            # Development & CI dependencies (ruff)
 ```
 
-## Safety and limitations
+---
 
-- This is nutrition information, not medical diagnosis or treatment.
-- Image observations and portions must be treated as estimates.
-- A model response can be incomplete or wrong; inspect the linked evidence.
-- Do not upload sensitive health information or images you do not have permission to use.
-- The local corpus is small, so many questions should result in a limited or no-grounded-answer response.
+## Medical & Clinical Disclaimer
 
-## GitHub readiness
-
-`.env` is ignored, `.env.example` documents every setting, tests do not require secrets, and GitHub Actions runs linting and tests. No license was added because none was selected by the project owner.
+NutriVision AI provides educational nutrition information grounded in public health standards. It does not provide medical diagnoses, treatment plans, or clinical prescriptions. Visual observations are approximate estimates and should not replace advice from a registered dietitian or healthcare provider.
