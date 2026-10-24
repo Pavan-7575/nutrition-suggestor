@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nutrition Coach</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <p class="eyebrow">Evidence-aware nutrition assistant</p>
+        <h1>Nutrition Coach</h1>
+        <p class="intro">Ask about a meal or attach a food photo or Nutrition Facts label. Image observations are estimates, and answers show the retrieved evidence.</p>
+      </header>
+
+      <form id="analysis-form" novalidate>
+        <label for="question">What would you like to know?</label>
+        <textarea id="question" name="question" maxlength="2000" required placeholder="For example: What should I check on this nutrition label?"></textarea>
+        <label class="upload" for="image">Optional image <span>JPEG, PNG, or WebP; up to 8 MB by default</span></label>
+        <input id="image" name="image" type="file" accept="image/jpeg,image/png,image/webp">
+        <div id="preview" class="preview" hidden></div>
+        <button id="submit" type="submit">Analyze</button>
+      </form>
+
+      <p id="status" class="status" aria-live="polite"></p>
+      <section id="result" class="result" hidden aria-live="polite">
+        <p id="mode" class="pill"></p>
+        <h2>Nutrition response</h2>
+        <div id="assessment" class="assessment"></div>
+        <h3>Evidence used</h3>
+        <ul id="evidence" class="evidence"></ul>
+        <h3>Important limitation</h3>
+        <p id="limitations"></p>
+      </section>
+    </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>

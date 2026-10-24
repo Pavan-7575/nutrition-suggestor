@@ -1,0 +1,26 @@
+[
+  {
+    "id": "usda-fdc",
+    "title": "USDA FoodData Central",
+    "text": "FoodData Central provides nutrient data for foods and branded products. Use a specific product label or a FoodData Central entry when a precise nutrient value is needed; preparation method and serving amount can change a meal total.",
+    "source_url": "https://fdc.nal.usda.gov/"
+  },
+  {
+    "id": "dietary-guidelines",
+    "title": "Dietary Guidelines for Americans: dietary patterns",
+    "text": "Healthy dietary patterns emphasize vegetables, fruits, whole grains, protein foods, and dairy or fortified soy alternatives while accounting for an individual's cultural preferences, budget, and dietary needs. A single meal is not enough to judge an overall diet.",
+    "source_url": "https://www.dietaryguidelines.gov/"
+  },
+  {
+    "id": "fda-label",
+    "title": "FDA: How to understand and use the Nutrition Facts label",
+    "text": "A Nutrition Facts label identifies serving size and nutrients per serving. Comparing the amount eaten with the stated serving size is necessary before calculating a total. Percent Daily Value is a guide for the whole daily diet, not a personalized medical target.",
+    "source_url": "https://www.fda.gov/food/nutrition-facts-label/how-understand-and-use-nutrition-facts-label"
+  },
+  {
+    "id": "who-healthy-diet",
+    "title": "World Health Organization: Healthy diet",
+    "text": "Healthy diets vary with individual characteristics and context. For people older than 10 years, WHO describes eating at least 400 grams of fruit and vegetables daily, excluding starchy roots such as potatoes and cassava. Individual medical needs can differ.",
+    "source_url": "https://www.who.int/news-room/fact-sheets/detail/healthy-diet"
+  }
+]
